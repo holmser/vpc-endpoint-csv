@@ -1,6 +1,6 @@
-# VPC Endpoint Services
+# VPC Endpoints
 
-This script uses the AWS API to generate a list of AWS VPC endpoints that are available in each region.
+This script uses the AWS API to generate a list of AWS Privatelink endpoints that are available in each region.
 
 ## Usage
 
