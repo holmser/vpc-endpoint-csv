@@ -6,7 +6,7 @@ This script uses the AWS API to generate a list of AWS VPC endpoints that are av
 
 1. Clone repo and enter directory
 2. `go build main.go`
-3. `./vpc-endpoins`
+3. `./vpc-endpoints`
 
 results.csv should now be in your working directory
 
