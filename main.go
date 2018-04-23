@@ -27,8 +27,6 @@ func getData(region string, sess *session.Session, ch chan<- regionData) {
 		log.Fatal(err)
 	}
 	ch <- regionData{region, res.ServiceDetails}
-	// regionList = append(regionList, *region.RegionName)
-	//return res
 }
 
 func main() {
