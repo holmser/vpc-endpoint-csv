@@ -14,6 +14,23 @@ import (
 	"github.com/aws/aws-sdk-go/service/ec2"
 )
 
+type regionData struct {
+	id   string
+	data []*ec2.ServiceDetail
+}
+
+func getData(region string, sess *session.Session, ch chan<- regionData) {
+	fmt.Println("making request for " + region)
+	svc := ec2.New(sess, aws.NewConfig().WithRegion(region))
+	res, err := svc.DescribeVpcEndpointServices(&ec2.DescribeVpcEndpointServicesInput{})
+	if err != nil {
+		log.Fatal(err)
+	}
+	ch <- regionData{region, res.ServiceDetails}
+	// regionList = append(regionList, *region.RegionName)
+	//return res
+}
+
 func main() {
 	// Create a EC2 client from just a session.
 	sess := session.Must(session.NewSession())
@@ -29,17 +46,20 @@ func main() {
 	resultMap := make(map[string]map[string]bool)
 
 	// First we make an API call to get all the regions, then we make an API call per region
-	for _, region := range getRegions(svc).Regions {
-		svc = ec2.New(sess, aws.NewConfig().WithRegion(*region.RegionName))
-		res, err := svc.DescribeVpcEndpointServices(&ec2.DescribeVpcEndpointServicesInput{})
+	regions := getRegions(svc)
+
+	ch := make(chan regionData)
+
+	for _, region := range regions {
 		regionList = append(regionList, *region.RegionName)
-		if err != nil {
-			log.Fatal(err)
-		}
+		go getData(*region.RegionName, sess, ch)
+	}
 
-		resultMap[*region.RegionName] = make(map[string]bool)
+	for range regions {
+		res := (<-ch)
 
-		for _, item := range res.ServiceDetails {
+		resultMap[res.id] = make(map[string]bool)
+		for _, item := range res.data {
 			if *item.Owner == "amazon" {
 
 				// Chop off the leading uri
@@ -48,7 +68,7 @@ func main() {
 
 				// Track the list of available services for pretty output
 				serviceList = addService(serviceList, sname)
-				resultMap[*region.RegionName][sname] = true
+				resultMap[res.id][sname] = true
 			}
 		}
 	}
@@ -70,7 +90,7 @@ func addService(serviceList []string, newService string) []string {
 	return res
 }
 
-func getRegions(svc *ec2.EC2) *ec2.DescribeRegionsOutput {
+func getRegions(svc *ec2.EC2) []*ec2.Region {
 	input := &ec2.DescribeRegionsInput{}
 	result, err := svc.DescribeRegions(input)
 	if err != nil {
@@ -85,7 +105,7 @@ func getRegions(svc *ec2.EC2) *ec2.DescribeRegionsOutput {
 			fmt.Println(err.Error())
 		}
 	}
-	return result
+	return result.Regions
 }
 
 func genCSV(serviceList []string, regionList []string, resultMap map[string]map[string]bool) error {
